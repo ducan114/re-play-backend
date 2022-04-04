@@ -77,7 +77,13 @@ router.post('/signin', authenticate, async (req, res) => {
 });
 
 router.get('/signout', (req, res) => {
-  res.clearCookie('refreshToken');
+  if (!req.cookies.refreshToken)
+    return res.status(400).json({ message: "You're not signed in yet" });
+
+  res.clearCookie('refreshToken', {
+    sameSite: 'None',
+    secure: true
+  });
   res.json({ message: 'Signed out' });
 });
 
