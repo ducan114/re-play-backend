@@ -18,20 +18,20 @@ passport.use(
       scope: ['profile', 'email']
     },
     async (_, __, profile, done) => {
-      const user = await User.findOneAndUpdate(
-        { provider: 'google', providerUserId: profile.id },
-        {
-          provider: 'google',
-          providerUserId: profile.id,
-          firstName: profile.name.familyName,
-          middleName: profile.name.middleName,
-          lastName: profile.name.givenName,
-          email: profile.emails[0].value,
-          profileImage: profile.photos[0].value,
-          role: 'basic'
-        },
-        { upsert: true, new: true }
-      );
+      const filter = { provider: 'google', providerUserId: profile.id };
+      const data = {
+        provider: 'google',
+        providerUserId: profile.id,
+        firstName: profile.name.familyName,
+        middleName: profile.name.middleName,
+        lastName: profile.name.givenName,
+        email: profile.emails[0].value,
+        profileImage: profile.photos[0].value
+      };
+      const user = await User.findOneAndUpdate(filter, data, {
+        upsert: true,
+        new: true
+      });
 
       const refreshToken = jwt.sign({ id: user._id }, JWT_REFRESH_TOKEN_SECRET);
 
