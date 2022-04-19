@@ -3,10 +3,10 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/user');
-const { authenticate } = require('../middlewares');
 
 const router = Router();
-const { JWT_REFRESH_TOKEN_SECRET, FRONTEND_URL } = process.env;
+const { JWT_REFRESH_TOKEN_SECRET, JWT_ACCESS_TOKEN_SECRET, FRONTEND_URL } =
+  process.env;
 const COOKIE_MAX_AGE = 1000 * 60 * 60 * 24 * 365;
 
 passport.use(
@@ -32,10 +32,7 @@ passport.use(
         upsert: true,
         new: true
       });
-
-      const refreshToken = jwt.sign({ id: user._id }, JWT_REFRESH_TOKEN_SECRET);
-
-      done(null, refreshToken);
+      done(null, user);
     }
   )
 );
@@ -54,34 +51,47 @@ router.get(
   '/oauth2/google/redirect',
   passport.authenticate('google'),
   (req, res) => {
-    res.cookie('refreshToken', req.user, {
+    const refreshToken = jwt.sign(
+      { id: req.user._id },
+      JWT_REFRESH_TOKEN_SECRET
+    );
+    res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       maxAge: COOKIE_MAX_AGE,
-      sameSite: 'none',
+      sameSite: 'Lax',
       secure: true
     });
     res.redirect(FRONTEND_URL);
   }
 );
 
-router.post('/signin', authenticate, async (req, res) => {
-  try {
-    const data = {
-      user: await User.findById(req.user.id)
-    };
-    if (req.newAccessToken) data.accessToken = req.newAccessToken;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
+router.get('/token', (req, res, next) => {
+  const { refreshToken } = req.cookies;
+  if (!refreshToken)
+    return res.status(401).json({ message: 'Unauthenticated' });
+  jwt.verify(refreshToken, JWT_REFRESH_TOKEN_SECRET, async (err, decoded) => {
+    if (err) return res.status(401).json({ message: 'Unauthenticated' });
+    try {
+      const user = await User.findById(decoded.id);
+      const accessToken = jwt.sign(
+        {
+          id: decoded.id,
+          role: user.role
+        },
+        JWT_ACCESS_TOKEN_SECRET
+      );
+      res.json(accessToken);
+    } catch (err) {
+      next(err);
+    }
+  });
 });
 
 router.get('/signout', (req, res) => {
   if (!req.cookies.refreshToken)
-    return res.status(400).json({ message: "You're not signed in yet" });
-
+    return res.status(401).json({ message: 'Unauthenticated' });
   res.clearCookie('refreshToken', {
-    sameSite: 'None',
+    sameSite: 'Lax',
     secure: true
   });
   res.json({ message: 'Signed out' });

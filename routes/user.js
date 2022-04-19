@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const User = require('../models/user');
 const Film = require('../models/film');
 const Episode = require('../models/episode');
 const UserReactionFilm = require('../models/user_reaction_film');
@@ -12,13 +13,23 @@ const {
 
 const router = Router();
 
+// Get user info.
+router.get('/', authenticate, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Create a film reaction.
 router.post(
   '/reactions/films/:slug',
   authenticate,
   validateRaction,
   findFilm,
-  async (req, res) => {
+  async (req, res, next) => {
     const reaction = req.reaction;
     const filter = { filmId: req.film.id, userId: req.user.id };
     try {
@@ -38,7 +49,7 @@ router.post(
         message: 'Reaction created'
       });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -48,17 +59,17 @@ router.get(
   '/reactions/films/:slug',
   authenticate,
   findFilm,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const userReact = await UserReactionFilm.findOne({
         filmId: req.film.id,
         userId: req.user.id
       });
       if (!userReact)
-        return res.json({ message: 'Not reacted to the film yet' });
+        return res.status(404).json({ message: 'Reaction does not exsist' });
       res.json({ reaction: userReact.reaction });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -69,12 +80,18 @@ router.patch(
   authenticate,
   validateRaction,
   findFilm,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const oldUserReaction = await UserReactionFilm.findOneAndUpdate(
-        { filmId: req.film.id, userId: req.user.id },
+        {
+          filmId: req.film.id,
+          userId: req.user.id,
+          reaction: { $ne: req.reaction }
+        },
         { reaction: req.reaction }
       );
+      if (!oldUserReaction)
+        return res.status(404).json({ message: 'Reaction does not exsist' });
       await Film.updateOne(
         { _id: req.film.id },
         {
@@ -86,7 +103,7 @@ router.patch(
       );
       res.json({ reaction: req.reaction, message: 'Reaction updated' });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -96,19 +113,21 @@ router.delete(
   '/reactions/films/:slug',
   authenticate,
   findFilm,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const userReaction = await UserReactionFilm.findOneAndDelete({
         filmId: req.film.id,
         userId: req.user.id
       });
+      if (!userReaction)
+        return res.status(404).json({ message: 'Reaction does not exsist' });
       await Film.updateOne(
         { _id: req.film.id },
         { $inc: { [`${userReaction.reaction}s`]: -1 } }
       );
       res.json({ message: 'Reaction removed' });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -120,7 +139,7 @@ router.post(
   validateRaction,
   findFilm,
   findEpisode,
-  async (req, res) => {
+  async (req, res, next) => {
     const reaction = req.reaction;
     const filter = {
       filmId: req.film.id,
@@ -144,7 +163,7 @@ router.post(
         message: 'Reaction created'
       });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -155,7 +174,7 @@ router.get(
   authenticate,
   findFilm,
   findEpisode,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const userReact = await UserReactionEpisode.findOne({
         filmId: req.film.id,
@@ -163,10 +182,10 @@ router.get(
         userId: req.user.id
       });
       if (!userReact)
-        return res.json({ message: 'Not reacted to the film yet' });
+        return res.status(404).json({ message: 'Reaction does not exsist' });
       res.json({ reaction: userReact.reaction });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -178,16 +197,19 @@ router.patch(
   validateRaction,
   findFilm,
   findEpisode,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const oldUserReaction = await UserReactionEpisode.findOneAndUpdate(
         {
           filmId: req.film.id,
           episodeNumber: req.episode.episodeNumber,
-          userId: req.user.id
+          userId: req.user.id,
+          reaction: { $ne: req.reaction }
         },
         { reaction: req.reaction }
       );
+      if (!oldUserReaction)
+        return res.status(404).json({ message: 'Reaction does not exsist' });
       await Episode.updateOne(
         { filmId: req.film.id, episodeNumber: req.episode.episodeNumber },
         {
@@ -199,7 +221,7 @@ router.patch(
       );
       res.json({ reaction: req.reaction, message: 'Reaction updated' });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -210,20 +232,22 @@ router.delete(
   authenticate,
   findFilm,
   findEpisode,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const userReaction = await UserReactionEpisode.findOneAndDelete({
         filmId: req.film.id,
         episodeNumber: req.episode.episodeNumber,
         userId: req.user.id
       });
+      if (!userReaction)
+        return res.status(404).json({ message: 'Reaction does not exsist' });
       await Episode.updateOne(
         { filmId: req.film.id, episodeNumber: req.episode.episodeNumber },
         { $inc: { [`${userReaction.reaction}s`]: -1 } }
       );
       res.json({ message: 'Reaction removed' });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );

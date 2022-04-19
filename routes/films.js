@@ -1,7 +1,9 @@
 const { Router } = require('express');
 const crypto = require('crypto');
 const Film = require('../models/film');
+const FilmReaction = require('../models/user_reaction_film');
 const Episode = require('../models/episode');
+const EpisodeReaction = require('../models/user_reaction_episode');
 const Genre = require('../models/genre');
 const {
   authenticate,
@@ -15,12 +17,12 @@ const router = Router();
 const { DRIVE_APP_ROOT_FOLDER } = process.env;
 
 // Get films
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const films = await Film.find();
-    res.json(films);
+    res.json({ films });
   } catch (err) {
-    res.status(500).json({ message: 'An internal error occurred' });
+    next(err);
   }
 });
 
@@ -77,16 +79,20 @@ router.post(
       }
     }
   ),
-  async (req, res) => {
-    await Film.create({
-      ...req.data
-    });
-    res.json({ message: 'Film created', accessToken: req.newAccessToken });
+  async (req, res, next) => {
+    try {
+      await Film.create({
+        ...req.data
+      });
+      res.json({ message: 'Film created' });
+    } catch (err) {
+      next(err);
+    }
   }
 );
 
 // Get a specific film.
-router.get('/:slug', async (req, res) => {
+router.get('/:slug', async (req, res, next) => {
   const slug = req.params.slug;
   try {
     const film = await Film.findOne({ slug });
@@ -96,7 +102,7 @@ router.get('/:slug', async (req, res) => {
       episodes: await Episode.find({ filmId: film._id })
     });
   } catch (err) {
-    res.status(500).json({ message: 'An internal error occurred' });
+    next(err);
   }
 });
 
@@ -145,7 +151,7 @@ router.patch(
       }
     }
   ),
-  async (req, res) => {
+  async (req, res, next) => {
     if (Object.keys(req.data).length === 0)
       return res.status(400).json({ message: 'There is nothing to update' });
     try {
@@ -171,7 +177,7 @@ router.patch(
         slug: req.data.title ? slug : undefined
       });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -182,16 +188,18 @@ router.delete(
   authenticate,
   authorize('admin'),
   findFilm,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       await req.drive.files.delete({
         fileId: req.film.rootFolder
       });
+      await EpisodeReaction.deleteMany({ filmId: req.film.id });
       await Episode.deleteMany({ filmId: req.film.id });
+      await FilmReaction.deleteMany({ filmId: req.film.id });
       await Film.deleteOne({ _id: req.film.id });
       res.json({ message: 'Film deleted' });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -202,7 +210,7 @@ router.post(
   authenticate,
   authorize('admin'),
   findFilm,
-  async (req, res) => {
+  async (req, res, next) => {
     if (!isValidEpisodeNumber(req.body.episodeNumber))
       return res.status(400).json({ message: 'Invalid episode number' });
     try {
@@ -212,7 +220,7 @@ router.post(
       });
       res.json({ isAvailable: episode == null });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -285,17 +293,23 @@ router.post(
     },
     data => data.videoId && data.videoMimeType
   ),
-  async (req, res) => {
-    await Episode.create({
-      ...req.data,
-      filmId: req.film.id
-    });
-    res.json({ message: 'Episode created', asscessToken: req.newAccessToken });
+  async (req, res, next) => {
+    try {
+      await Episode.create({
+        ...req.data,
+        filmId: req.film.id
+      });
+      res.json({
+        message: 'Episode created'
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 );
 
 // Get a specific episode.
-router.get('/:slug/:episodeNumber', async (req, res) => {
+router.get('/:slug/:episodeNumber', async (req, res, next) => {
   const { slug, episodeNumber } = req.params;
   try {
     const { _id: filmId } = await Film.findOne({ slug });
@@ -304,7 +318,7 @@ router.get('/:slug/:episodeNumber', async (req, res) => {
     if (episode) return res.json(episode);
     res.json({ message: 'Episode not found' });
   } catch (err) {
-    res.status(500).json({ message: 'An internal error occurred' });
+    next(err);
   }
 });
 
@@ -376,7 +390,7 @@ router.patch(
       }
     }
   ),
-  async (req, res) => {
+  async (req, res, next) => {
     if (Object.keys(req.data).length === 0)
       return res.status(400).json({ message: 'There is nothing to update' });
     const filter = {
@@ -409,7 +423,7 @@ router.patch(
         episodeNumber: req.data.episodeNumber
       });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );
@@ -421,7 +435,7 @@ router.delete(
   authorize('admin'),
   findFilm,
   findEpisode,
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       await req.drive.files.delete({
         fileId: req.episode.videoId
@@ -430,13 +444,17 @@ router.delete(
         await req.drive.files.delete({
           fileId: req.episode.thumbnailId
         });
+      await EpisodeReaction.deleteMany({
+        filmId: req.film.id,
+        episodeNumber: req.episode.episodeNumber
+      });
       await Episode.deleteOne({
         filmId: req.film.id,
         episodeNumber: req.episode.episodeNumber
       });
       res.json({ message: 'Episode deleted' });
     } catch (err) {
-      res.status(500).json({ message: 'An internal error occurred' });
+      next(err);
     }
   }
 );

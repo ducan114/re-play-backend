@@ -1,10 +1,9 @@
 const jwt = require('jsonwebtoken');
 const busboy = require('busboy');
-const User = require('./models/user');
 const Film = require('./models/film');
 const Episode = require('./models/episode');
 
-const { JWT_ACCESS_TOKEN_SECRET, JWT_REFRESH_TOKEN_SECRET } = process.env;
+const { JWT_ACCESS_TOKEN_SECRET } = process.env;
 
 function setDrive(drive) {
   return (req, res, next) => {
@@ -13,41 +12,30 @@ function setDrive(drive) {
   };
 }
 
+function logErrors(err, req, res, next) {
+  console.log(err.stack);
+  next(err);
+}
+
+function clientErrorHandler(err, req, res, next) {
+  res.status(500).json({ message: 'An internal error occurred' });
+}
+
 function authenticate(req, res, next) {
-  const refreshToken = req.cookies.refreshToken;
   const authHeader = req.header('authorization');
   const accessToken = authHeader && authHeader.split(' ')[1];
-
-  if (!refreshToken)
-    return res.status(401).json({ message: 'Not authenticated' });
-
-  jwt.verify(accessToken, JWT_ACCESS_TOKEN_SECRET, async (err, decoded) => {
-    if (!err) {
-      req.user = decoded;
-      return next();
-    }
-
-    jwt.verify(refreshToken, JWT_REFRESH_TOKEN_SECRET, async (err, decoded) => {
-      if (err) return res.status(401).json({ message: 'Not authenticated' });
-
-      const user = await User.findById(decoded.id);
-      req.user = {
-        id: user._id,
-        role: user.role
-      };
-      const newAccessToken = jwt.sign(req.user, JWT_ACCESS_TOKEN_SECRET, {
-        expiresIn: '30m'
-      });
-      req.newAccessToken = newAccessToken;
-      next();
-    });
+  if (!accessToken) return res.status(401).json({ message: 'Unauthenticated' });
+  jwt.verify(accessToken, JWT_ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) return res.status(401).json({ message: 'Unauthenticated' });
+    req.user = decoded;
+    next();
   });
 }
 
 function authorize(role) {
   return (req, res, next) => {
     if (req.user.role !== role)
-      return res.status(401).json({ message: 'Unauthorized' });
+      return res.status(403).json({ message: 'Unauthorized' });
     next();
   };
 }
@@ -195,5 +183,7 @@ module.exports = {
   processFormData,
   findFilm,
   validateRaction,
-  findEpisode
+  findEpisode,
+  logErrors,
+  clientErrorHandler
 };
