@@ -3,7 +3,7 @@ const busboy = require('busboy');
 const Film = require('./models/film');
 const Episode = require('./models/episode');
 
-const { JWT_ACCESS_TOKEN_SECRET } = process.env;
+const { JWT_ACCESS_TOKEN_SECRET, JWT_REFRESH_TOKEN_SECRET } = process.env;
 
 function setDrive(drive) {
   return (req, res, next) => {
@@ -166,6 +166,7 @@ async function findEpisode(req, res, next) {
       return res.status(404).json({ message: 'Episode not found' });
     req.episode = {
       filmId: episode.filmId,
+      episodeId: episode._id,
       episodeNumber: episode.episodeNumber,
       thumbnailId: episode.thumbnailId,
       videoId: episode.videoId
@@ -174,6 +175,25 @@ async function findEpisode(req, res, next) {
   } catch (err) {
     return res.status(500).json({ message: 'An internal error occurred' });
   }
+}
+
+/**
+ * This fuction wraps an Express middleware to use with socket.io.
+ * @param {Function} expressMiddleware An Express middleware function.
+ * @returns A socket.io middleware.
+ */
+function socketMiddleware(expressMiddleware) {
+  return (socket, next) => expressMiddleware(socket.request, {}, next);
+}
+
+function authenticateSocket(socket, next) {
+  const { refreshToken } = socket.request.cookies;
+  if (!refreshToken) return next();
+  jwt.verify(refreshToken, JWT_REFRESH_TOKEN_SECRET, (err, decoded) => {
+    if (err) return next();
+    socket.request.userId = decoded.id;
+    next();
+  });
 }
 
 module.exports = {
@@ -185,5 +205,7 @@ module.exports = {
   validateRaction,
   findEpisode,
   logErrors,
-  clientErrorHandler
+  clientErrorHandler,
+  authenticateSocket,
+  socketMiddleware
 };

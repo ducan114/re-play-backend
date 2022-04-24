@@ -9,7 +9,17 @@ const authRouter = require('./routes/auth');
 const filmRouter = require('./routes/films');
 const videoRouter = require('./routes/videos');
 const userRouter = require('./routes/user');
-const { setDrive, logErrors, clientErrorHandler } = require('./middlewares');
+const {
+  setDrive,
+  logErrors,
+  clientErrorHandler,
+  authenticateSocket,
+  socketMiddleware
+} = require('./middlewares');
+const Comment = require('./models/comment');
+const User = require('./models/user');
+const Film = require('./models/film');
+const Episode = require('./models/episode');
 
 const { PORT, MONGODB_STRING_URI } = process.env;
 
@@ -47,15 +57,92 @@ function startServer(auth) {
   app.use(logErrors);
   app.use(clientErrorHandler);
 
+  io.use(socketMiddleware(cookieParser()));
+  io.use(authenticateSocket);
   io.on('connection', socket => {
-    console.log('A user connected');
-    console.log(socket.handshake.headers.cookie);
-    console.log(socket.handshake.auth.accessToken);
+    socket.on('join-chat', (room, cb) =>
+      handleSocketError(async () => {
+        await validateRoom(room);
+        socket.join(room);
+        cb();
+        socket.on('load-old-comments', comment =>
+          handleSocketError(async () => {
+            const oldCommentsFilter = {
+              room
+            };
+            if (comment != null) {
+              oldCommentsFilter.createdAt = { $lte: comment.createdAt };
+              oldCommentsFilter._id = { $lt: comment._id };
+            }
+            const oldComments = (
+              await Comment.find(oldCommentsFilter)
+                .sort({ createdAt: -1 })
+                .limit(5)
+            ).reverse();
+            const users = await User.find({
+              _id: { $in: oldComments.map(comment => comment.author) }
+            });
+            const usersMap = Object.fromEntries(
+              users.map(user => [
+                user._id,
+                {
+                  _id: user._id,
+                  profileImage: user.profileImage,
+                  firstName: user.firstName,
+                  middleName: user.middleName,
+                  lastName: user.lastName
+                }
+              ])
+            );
+            const populatedOldComments = oldComments.map(comment => {
+              const { _id, content, createdAt } = comment;
+              return {
+                _id,
+                content,
+                createdAt,
+                author: usersMap[comment.author]
+              };
+            });
+            socket.emit('old-comments', populatedOldComments);
+          })
+        );
+        socket.on('send-comment', comment => {
+          if (!socket.request.userId) return;
+          handleSocketError(async () => {
+            await validateRoom(room);
+            const createdAt = new Date();
+            const newComment = await Comment.create({
+              room,
+              author: comment.author._id,
+              content: comment.content,
+              createdAt
+            });
+            io.to(room).emit('new-comment', {
+              _id: newComment._id,
+              ...comment,
+              createdAt
+            });
+          });
+        });
+      })
+    );
+    socket.on('disconnect', () => {});
 
-    socket.on('disconnect', () => {
-      console.log('User disconnected');
-    });
+    async function handleSocketError(callback) {
+      try {
+        await callback();
+      } catch (err) {
+        socket.emit('error', { message: err.message });
+      }
+    }
   });
+}
+
+async function validateRoom(room) {
+  const [filmId, episodeId] = room.split('/');
+  if (!(await Film.findById(filmId))) throw new Error('Film not found');
+  if (episodeId && !(await Episode.findById(episodeId)))
+    throw new Error('Episode not found');
 }
 
 module.exports = {

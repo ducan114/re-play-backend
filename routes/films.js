@@ -5,6 +5,7 @@ const FilmReaction = require('../models/user_reaction_film');
 const Episode = require('../models/episode');
 const EpisodeReaction = require('../models/user_reaction_episode');
 const Genre = require('../models/genre');
+const Comment = require('../models/comment');
 const {
   authenticate,
   authorize,
@@ -196,6 +197,7 @@ router.delete(
       await EpisodeReaction.deleteMany({ filmId: req.film.id });
       await Episode.deleteMany({ filmId: req.film.id });
       await FilmReaction.deleteMany({ filmId: req.film.id });
+      await Comment.deleteMany({ room: { $regex: `^${req.film.id}` } });
       await Film.deleteOne({ _id: req.film.id });
       res.json({ message: 'Film deleted' });
     } catch (err) {
@@ -447,6 +449,9 @@ router.delete(
       await EpisodeReaction.deleteMany({
         filmId: req.film.id,
         episodeNumber: req.episode.episodeNumber
+      });
+      await Comment.deleteMany({
+        room: { $regex: `${req.film.id}/${req.episode.episodeId}` }
       });
       await Episode.deleteOne({
         filmId: req.film.id,
