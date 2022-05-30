@@ -58,8 +58,8 @@ router.get(
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       maxAge: COOKIE_MAX_AGE,
-      sameSite: 'Lax',
-      secure: true
+      sameSite: 'None',
+      secure: true,
     });
     res.redirect(FRONTEND_URL);
   }
