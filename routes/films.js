@@ -18,10 +18,32 @@ const {
 const router = Router();
 const { DRIVE_APP_ROOT_FOLDER } = process.env;
 
-// Get films
+// Get new films
 router.get('/', async (req, res, next) => {
   try {
-    const films = await Film.find();
+    const films = (await Film.find()).sort(
+      (a, b) => b.releasedDate.getTime() - a.releasedDate.getTime()
+    );
+    res.json({ films });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get top view films
+router.get('/topview', async (req, res, next) => {
+  try {
+    const films = (await Film.find()).sort((a, b) => b.views - a.views);
+    res.json({ films });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get top like films
+router.get('/toplike', async (req, res, next) => {
+  try {
+    const films = (await Film.find()).sort((a, b) => b.likes - a.likes);
     res.json({ films });
   } catch (err) {
     next(err);
