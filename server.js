@@ -21,7 +21,7 @@ const User = require('./models/user');
 const Film = require('./models/film');
 const Episode = require('./models/episode');
 
-const { PORT, MONGODB_STRING_URI } = process.env;
+const { PORT = 5000, MONGODB_STRING_URI } = process.env;
 
 const app = express();
 const server = createServer(app);

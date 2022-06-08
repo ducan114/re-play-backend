@@ -2,37 +2,40 @@ const mongoose = require('mongoose');
 
 const Episode = new mongoose.Schema({
   title: String,
-  episodeNumber: Number,
+  episodeNumber: {
+    type: Number,
+    required: true,
+  },
   filmId: {
     type: String,
-    required: true
+    required: true,
   },
   videoId: {
     type: String,
-    required: true
+    required: true,
   },
   videoMimeType: {
     type: String,
-    required: true
+    required: true,
   },
   views: {
     type: Number,
-    default: 0
+    default: 0,
   },
   updatedAt: {
     type: Date,
-    default: new Date()
+    default: new Date(),
   },
   thumbnail: String,
   thumbnailId: String,
   likes: {
     type: Number,
-    default: 0
+    default: 0,
   },
   dislikes: {
     type: Number,
-    default: 0
-  }
+    default: 0,
+  },
 });
 
 module.exports = mongoose.model('episodes', Episode);

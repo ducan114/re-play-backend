@@ -6,12 +6,13 @@ const Episode = require('../models/episode');
 const EpisodeReaction = require('../models/user_reaction_episode');
 const Genre = require('../models/genre');
 const Comment = require('../models/comment');
+const View = require('../models/view');
 const {
   authenticate,
   authorize,
   processFormData,
   findFilm,
-  findEpisode
+  findEpisode,
 } = require('../middlewares');
 
 const router = Router();
@@ -53,26 +54,26 @@ router.post(
           resource: {
             name: crypto.randomUUID(),
             mimeType: 'application/vnd.google-apps.folder',
-            parents: [DRIVE_APP_ROOT_FOLDER]
-          }
+            parents: [DRIVE_APP_ROOT_FOLDER],
+          },
         });
         const uploadedFile = await req.drive.files.create({
           fields: 'webContentLink, id',
           media: {
             mimeType,
-            body: file
+            body: file,
           },
           requestBody: {
             name: `poster.${mimeType.split('/')[1]}`,
-            parents: [rootFolder.data.id]
-          }
+            parents: [rootFolder.data.id],
+          },
         });
         await req.drive.permissions.create({
           fileId: uploadedFile.data.id,
           requestBody: {
             role: 'reader',
-            type: 'anyone'
-          }
+            type: 'anyone',
+          },
         });
         data.poster = uploadedFile.data.webContentLink;
         data.posterId = uploadedFile.data.id;
@@ -83,7 +84,7 @@ router.post(
   async (req, res, next) => {
     try {
       await Film.create({
-        ...req.data
+        ...req.data,
       });
       res.json({ message: 'Film created' });
     } catch (err) {
@@ -98,9 +99,11 @@ router.get('/:slug', async (req, res, next) => {
   try {
     const film = await Film.findOne({ slug });
     if (!film) return res.status(404).json({ message: 'Film not found' });
+    const episodes = await Episode.find({ filmId: film._id });
+    episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
     res.json({
       ...film._doc,
-      episodes: await Episode.find({ filmId: film._id })
+      episodes,
     });
   } catch (err) {
     next(err);
@@ -133,19 +136,19 @@ router.patch(
           fields: 'webContentLink, id',
           media: {
             mimeType,
-            body: file
+            body: file,
           },
           requestBody: {
             name: `poster.${mimeType.split('/')[1]}`,
-            parents: [req.film.rootFolder]
-          }
+            parents: [req.film.rootFolder],
+          },
         });
         await req.drive.permissions.create({
           fileId: uploadedFile.data.id,
           requestBody: {
             role: 'reader',
-            type: 'anyone'
-          }
+            type: 'anyone',
+          },
         });
         data.poster = uploadedFile.data.webContentLink;
         data.posterId = uploadedFile.data.id;
@@ -160,22 +163,22 @@ router.patch(
       if (!film) return res.status(404).json({ message: 'Film not found' });
       if (req.data.poster)
         await req.drive.files.delete({
-          fileId: film.posterId
+          fileId: film.posterId,
         });
       const { slug } = await Film.findOneAndUpdate(
         { _id: req.film.id },
         {
           ...film._doc,
           ...req.data,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         {
-          new: true
+          new: true,
         }
       );
       res.json({
         message: 'Film updated',
-        slug: req.data.title ? slug : undefined
+        slug: req.data.title ? slug : undefined,
       });
     } catch (err) {
       next(err);
@@ -192,7 +195,7 @@ router.delete(
   async (req, res, next) => {
     try {
       await req.drive.files.delete({
-        fileId: req.film.rootFolder
+        fileId: req.film.rootFolder,
       });
       await EpisodeReaction.deleteMany({ filmId: req.film.id });
       await Episode.deleteMany({ filmId: req.film.id });
@@ -218,7 +221,7 @@ router.post(
     try {
       const episode = await Episode.findOne({
         filmId: req.film.id,
-        episodeNumber: req.body.episodeNumber
+        episodeNumber: req.body.episodeNumber,
       });
       res.json({ isAvailable: episode == null });
     } catch (err) {
@@ -243,7 +246,7 @@ router.post(
           throw new Error('Invalid episode number');
         const episode = await Episode.findOne({
           episodeNumber: val,
-          filmId: req.film.id
+          filmId: req.film.id,
         });
         if (episode) throw new Error('Episode number is existed');
       }
@@ -258,12 +261,12 @@ router.post(
           fields: 'id',
           media: {
             mimeType,
-            body: file
+            body: file,
           },
           requestBody: {
             name: crypto.randomUUID(),
-            parents: [req.film.rootFolder]
-          }
+            parents: [req.film.rootFolder],
+          },
         });
         data.videoId = uploadedFile.data.id;
       }
@@ -275,19 +278,19 @@ router.post(
           fields: 'id, webContentLink',
           media: {
             mimeType,
-            body: file
+            body: file,
           },
           requestBody: {
             name: crypto.randomUUID(),
-            parents: [req.film.rootFolder]
-          }
+            parents: [req.film.rootFolder],
+          },
         });
         await req.drive.permissions.create({
           fileId: uploadedFile.data.id,
           requestBody: {
             role: 'reader',
-            type: 'anyone'
-          }
+            type: 'anyone',
+          },
         });
         data.thumbnail = uploadedFile.data.webContentLink;
         data.thumbnailId = uploadedFile.data.id;
@@ -299,10 +302,10 @@ router.post(
     try {
       await Episode.create({
         ...req.data,
-        filmId: req.film.id
+        filmId: req.film.id,
       });
       res.json({
-        message: 'Episode created'
+        message: 'Episode created',
       });
     } catch (err) {
       next(err);
@@ -341,7 +344,7 @@ router.patch(
           throw new Error('Invalid episode number');
         const episode = await Episode.findOne({
           episodeNumber: val,
-          filmId: req.film.id
+          filmId: req.film.id,
         });
         if (episode) throw new Error('Episode number is existed');
       }
@@ -356,12 +359,12 @@ router.patch(
           fields: 'id',
           media: {
             mimeType,
-            body: file
+            body: file,
           },
           requestBody: {
             name: crypto.randomUUID(),
-            parents: [req.film.rootFolder]
-          }
+            parents: [req.film.rootFolder],
+          },
         });
         data.videoId = uploadedFile.data.id;
       }
@@ -373,19 +376,19 @@ router.patch(
           fields: 'id, webContentLink',
           media: {
             mimeType,
-            body: file
+            body: file,
           },
           requestBody: {
             name: crypto.randomUUID(),
-            parents: [req.film.rootFolder]
-          }
+            parents: [req.film.rootFolder],
+          },
         });
         await req.drive.permissions.create({
           fileId: uploadedFile.data.id,
           requestBody: {
             role: 'reader',
-            type: 'anyone'
-          }
+            type: 'anyone',
+          },
         });
         data.thumbnail = uploadedFile.data.webContentLink;
         data.thumbnailId = uploadedFile.data.id;
@@ -397,7 +400,7 @@ router.patch(
       return res.status(400).json({ message: 'There is nothing to update' });
     const filter = {
       filmId: req.film.id,
-      episodeNumber: req.episode.episodeNumber
+      episodeNumber: req.episode.episodeNumber,
     };
     try {
       const episode = await Episode.findOne(filter);
@@ -408,21 +411,21 @@ router.patch(
         episode.thumbnailId
       )
         await req.drive.files.delete({
-          fileId: episode.thumbnailId
+          fileId: episode.thumbnailId,
         });
       if (req.data.videoId)
         await req.drive.files.delete({
-          fileId: episode.videoId
+          fileId: episode.videoId,
         });
       const { removeThumbnail, ...data } = req.data;
       if (removeThumbnail) data.$unset = { thumbnail: 1, thumbnailId: 1 };
       await Episode.updateOne(filter, {
         ...data,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
       res.json({
         message: 'Episode updated',
-        episodeNumber: req.data.episodeNumber
+        episodeNumber: req.data.episodeNumber,
       });
     } catch (err) {
       next(err);
@@ -440,24 +443,49 @@ router.delete(
   async (req, res, next) => {
     try {
       await req.drive.files.delete({
-        fileId: req.episode.videoId
+        fileId: req.episode.videoId,
       });
       if (req.episode.thumbnailId)
         await req.drive.files.delete({
-          fileId: req.episode.thumbnailId
+          fileId: req.episode.thumbnailId,
         });
       await EpisodeReaction.deleteMany({
         filmId: req.film.id,
-        episodeNumber: req.episode.episodeNumber
+        episodeNumber: req.episode.episodeNumber,
       });
       await Comment.deleteMany({
-        room: { $regex: `${req.film.id}/${req.episode.episodeId}` }
+        room: { $regex: `${req.film.id}/${req.episode.episodeId}` },
       });
       await Episode.deleteOne({
         filmId: req.film.id,
-        episodeNumber: req.episode.episodeNumber
+        episodeNumber: req.episode.episodeNumber,
       });
       res.json({ message: 'Episode deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Update views.
+router.post(
+  '/:slug/:episodeNumber/views',
+  findFilm,
+  findEpisode,
+  async (req, res, next) => {
+    const { userId = 'anonymous' } = req.body;
+    try {
+      await View.create({
+        userId,
+        filmId: req.film.id,
+        episodeId: req.episode.episodeId,
+      });
+      await Episode.updateOne(
+        { _id: req.episode.episodeId },
+        { $inc: { views: 1 } }
+      );
+      await Film.updateOne({ _id: req.film.id }, { $inc: { views: 1 } });
+      res.json({ message: 'New views updated' });
     } catch (err) {
       next(err);
     }
@@ -468,4 +496,5 @@ function isValidEpisodeNumber(episodeNumber) {
   const epNum = Number(episodeNumber);
   return epNum != null && Number.isInteger(epNum) && epNum > 0;
 }
+
 module.exports = router;
