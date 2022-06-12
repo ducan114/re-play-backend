@@ -20,10 +20,11 @@ const { DRIVE_APP_ROOT_FOLDER } = process.env;
 
 // Get new films
 router.get('/', async (req, res, next) => {
+  const { searchTerm = '' } = req.query;
   try {
-    const films = (await Film.find()).sort(
-      (a, b) => b.releasedDate.getTime() - a.releasedDate.getTime()
-    );
+    const films = (
+      await Film.find({ title: { $regex: searchTerm, $options: 'i' } })
+    ).sort((a, b) => b.releasedDate.getTime() - a.releasedDate.getTime());
     res.json({ films });
   } catch (err) {
     next(err);
@@ -32,8 +33,12 @@ router.get('/', async (req, res, next) => {
 
 // Get top view films
 router.get('/topview', async (req, res, next) => {
+  const { searchTerm = '' } = req.query;
+  console.log(searchTerm);
   try {
-    const films = (await Film.find()).sort((a, b) => b.views - a.views);
+    const films = (
+      await Film.find({ title: { $regex: searchTerm, $options: 'i' } })
+    ).sort((a, b) => b.views - a.views);
     res.json({ films });
   } catch (err) {
     next(err);
@@ -42,8 +47,11 @@ router.get('/topview', async (req, res, next) => {
 
 // Get top like films
 router.get('/toplike', async (req, res, next) => {
+  const { searchTerm = '' } = req.query;
   try {
-    const films = (await Film.find()).sort((a, b) => b.likes - a.likes);
+    const films = (
+      await Film.find({ title: { $regex: searchTerm, $options: 'i' } })
+    ).sort((a, b) => b.likes - a.likes);
     res.json({ films });
   } catch (err) {
     next(err);
