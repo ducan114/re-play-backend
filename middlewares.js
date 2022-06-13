@@ -196,6 +196,15 @@ function authenticateSocket(socket, next) {
   });
 }
 
+function getSearchRegExp(req, res, next) {
+  const { searchTerm = '' } = req.query;
+  req.searchRegExp = new RegExp(
+    searchTerm.replaceAll(/[\.\[\]\^\$\+\*\?\{\}\(\)\|\\]/g, '\\$&'),
+    'i'
+  );
+  next();
+}
+
 module.exports = {
   setDrive,
   authenticate,
@@ -207,5 +216,6 @@ module.exports = {
   logErrors,
   clientErrorHandler,
   authenticateSocket,
-  socketMiddleware
+  socketMiddleware,
+  getSearchRegExp
 };
