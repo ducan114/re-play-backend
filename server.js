@@ -9,6 +9,7 @@ const authRouter = require('./routes/auth');
 const filmRouter = require('./routes/films');
 const videoRouter = require('./routes/videos');
 const userRouter = require('./routes/user');
+const genreRouter = require('./routes/genres');
 const {
   setDrive,
   logErrors,
@@ -53,6 +54,7 @@ function startServer(auth) {
   app.use('/', authRouter);
   app.use('/user', userRouter);
   app.use('/films', setDrive(driveInstance), filmRouter);
+  app.use('/genres', genreRouter);
   app.use('/videos', setDrive(driveInstance), videoRouter);
   app.use(logErrors);
   app.use(clientErrorHandler);

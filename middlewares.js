@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const busboy = require('busboy');
 const Film = require('./models/film');
 const Episode = require('./models/episode');
-
+const Genre = require('./models/genre');
 const { JWT_ACCESS_TOKEN_SECRET, JWT_REFRESH_TOKEN_SECRET } = process.env;
 
 function setDrive(drive) {
@@ -205,6 +205,17 @@ function getSearchRegExp(req, res, next) {
   next();
 }
 
+async function findGenre(req, res, next) {
+  const { name } = { ...req.body, ...req.params };
+  if (!name) return res.status(400).json({ message: 'Invalid genre name' });
+  try {
+    req.existingGenre = await Genre.findOne({ name });
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   setDrive,
   authenticate,
@@ -217,5 +228,6 @@ module.exports = {
   clientErrorHandler,
   authenticateSocket,
   socketMiddleware,
-  getSearchRegExp
+  getSearchRegExp,
+  findGenre
 };
