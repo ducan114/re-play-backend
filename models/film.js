@@ -17,7 +17,7 @@ const Film = new mongoose.Schema({
   },
   genres: [
     {
-      id: {
+      _id: {
         type: String,
         required: true
       },

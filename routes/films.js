@@ -67,9 +67,9 @@ router.post(
     async (name, val, data) => {
       if (name === 'genre') {
         if (!data.genres) data.genres = [];
-        const genre = await Genre.findById(val);
+        const genre = await Genre.findOne({ name: val });
         if (!genre) throw new Error('Invalid genre');
-        data.genres.push({ id: genre._id, name: genre.name });
+        data.genres.push({ _id: genre._id, name: val });
       } else data[name] = val;
     },
     async (name, file, info, data, req) => {
@@ -150,9 +150,9 @@ router.patch(
     async (name, val, data) => {
       if (name === 'genre') {
         if (!data.genres) data.genres = [];
-        const genre = await Genre.findById(val);
+        const genre = await Genre.findOne({ name: val });
         if (!genre) throw new Error('Invalid genre');
-        data.genres.push({ id: genre._id, name: genre.name });
+        data.genres.push({ _id: genre._id, name: val });
       } else data[name] = val;
     },
     async (name, file, info, data, req) => {

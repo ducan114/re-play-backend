@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const Genre = require('../models/genre');
+const Film = require('../models/film');
 const { findGenre, authenticate, authorize } = require('../middlewares');
 
 const router = new Router();
@@ -47,8 +48,23 @@ router.patch(
     const { name, description } = req.body;
     try {
       await Genre.updateOne(
-        { name },
+        { name: req.existingGenre.name },
         description ? { name, description } : { name }
+      );
+      await Film.updateMany(
+        {
+          'genres.name': req.existingGenre.name
+        },
+        {
+          $set: { 'genres.$[i].name': name }
+        },
+        {
+          arrayFilters: [
+            {
+              'i.name': req.existingGenre.name
+            }
+          ]
+        }
       );
       res.json({ message: 'Genre updated' });
     } catch (err) {
@@ -69,6 +85,26 @@ router.delete(
     const { name } = req.params;
     try {
       await Genre.deleteOne({ name });
+      await Film.updateMany(
+        {
+          'genres.name': req.existingGenre.name
+        },
+        {
+          $pull: {
+            genres: {
+              _id: req.existingGenre._id,
+              name: req.existingGenre.name
+            }
+          }
+        },
+        {
+          arrayFilters: [
+            {
+              'i.name': req.existingGenre.name
+            }
+          ]
+        }
+      );
       res.json({ message: 'Genre deleted' });
     } catch (err) {
       next(err);
