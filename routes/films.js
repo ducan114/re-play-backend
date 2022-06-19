@@ -21,10 +21,16 @@ const { DRIVE_APP_ROOT_FOLDER } = process.env;
 
 // Get new films
 router.get('/', getSearchRegExp, async (req, res, next) => {
+  const genres = req.query.genre;
+  const query = { title: { $regex: req.searchRegExp } };
+  genres &&
+    (query['genres.name'] = {
+      $all: [...(Array.isArray(genres) ? genres : [genres])]
+    });
   try {
-    const films = (
-      await Film.find({ title: { $regex: req.searchRegExp } })
-    ).sort((a, b) => b.releasedDate.getTime() - a.releasedDate.getTime());
+    const films = (await Film.find(query)).sort(
+      (a, b) => b.releasedDate.getTime() - a.releasedDate.getTime()
+    );
     res.json({ films });
   } catch (err) {
     next(err);
@@ -33,10 +39,14 @@ router.get('/', getSearchRegExp, async (req, res, next) => {
 
 // Get top view films
 router.get('/topview', getSearchRegExp, async (req, res, next) => {
+  const genres = req.query.genre;
+  const query = { title: { $regex: req.searchRegExp } };
+  genres &&
+    (query['genres.name'] = {
+      $all: [...(Array.isArray(genres) ? genres : [genres])]
+    });
   try {
-    const films = (
-      await Film.find({ title: { $regex: req.searchRegExp } })
-    ).sort((a, b) => b.views - a.views);
+    const films = (await Film.find(query)).sort((a, b) => b.views - a.views);
     res.json({ films });
   } catch (err) {
     next(err);
@@ -45,10 +55,14 @@ router.get('/topview', getSearchRegExp, async (req, res, next) => {
 
 // Get top like films
 router.get('/toplike', getSearchRegExp, async (req, res, next) => {
+  const genres = req.query.genre;
+  const query = { title: { $regex: req.searchRegExp } };
+  genres &&
+    (query['genres.name'] = {
+      $all: [...(Array.isArray(genres) ? genres : [genres])]
+    });
   try {
-    const films = (
-      await Film.find({ title: { $regex: req.searchRegExp } })
-    ).sort((a, b) => b.likes - a.likes);
+    const films = (await Film.find(query)).sort((a, b) => b.likes - a.likes);
     res.json({ films });
   } catch (err) {
     next(err);
