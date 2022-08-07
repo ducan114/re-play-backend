@@ -59,7 +59,7 @@ router.get(
       httpOnly: true,
       maxAge: COOKIE_MAX_AGE,
       sameSite: 'None',
-      secure: true,
+      secure: true
     });
     res.redirect(FRONTEND_URL);
   }
@@ -91,7 +91,7 @@ router.get('/signout', (req, res) => {
   if (!req.cookies.refreshToken)
     return res.status(401).json({ message: 'Unauthenticated' });
   res.clearCookie('refreshToken', {
-    sameSite: 'Lax',
+    sameSite: 'None',
     secure: true
   });
   res.json({ message: 'Signed out' });
