@@ -15,9 +15,11 @@ passport.use(
       clientID: process.env.AUTH_CLIENT_ID,
       clientSecret: process.env.AUTH_CLIENT_SECRET,
       callbackURL: process.env.AUTH_REDIRECT_URI,
+      passReqToCallback: true,
       scope: ['profile', 'email']
     },
-    async (_, __, profile, done) => {
+    async (req, _, __, profile, done) => {
+      console.log(req.headers);
       const filter = { provider: 'google', providerUserId: profile.id };
       const data = {
         provider: 'google',
@@ -51,6 +53,7 @@ router.get(
   '/oauth2/google/redirect',
   passport.authenticate('google'),
   (req, res) => {
+    // console.log(req);
     const refreshToken = jwt.sign(
       { id: req.user._id },
       JWT_REFRESH_TOKEN_SECRET
@@ -80,6 +83,7 @@ router.get('/token', (req, res, next) => {
         },
         JWT_ACCESS_TOKEN_SECRET
       );
+      res.header('Cache-Control', 'no-store');
       res.json(accessToken);
     } catch (err) {
       next(err);

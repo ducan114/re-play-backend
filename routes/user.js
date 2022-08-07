@@ -17,6 +17,10 @@ const router = Router();
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
+    res.header(
+      'Cache-Control',
+      'max-age=0, no-cache, no-store, must-revalidate, proxy-revalidate'
+    );
     res.json(user);
   } catch (err) {
     next(err);
