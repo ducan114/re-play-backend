@@ -361,8 +361,14 @@ router.post(
       });
       pushSubscriptions.forEach(pushSubscription =>
         webpush
-          .sendNotification(JSON.parse(pushSubscription.subscription, payload))
-          .then(console.log)
+          .sendNotification(JSON.parse(pushSubscription.subscription), payload)
+          .catch(async res => {
+            if (res.statusCode === 410)
+              await PushSubscription.deleteOne({
+                userId: pushSubscription.userId,
+                subscription: pushSubscription.subscription
+              });
+          })
       );
       res.json({
         message: 'Episode created'
