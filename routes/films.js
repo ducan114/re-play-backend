@@ -360,7 +360,7 @@ router.post(
         title: `${req.film.title} has updated episode ${req.data.episodeNumber}`,
         body: `Episode ${req.data.episodeNumber}${
           req.data.title ? ` - ${req.data.title}` : ''
-        } is now available.\nCheck it out!`,
+        } is now available. Check it out!`,
         url: `${FRONTEND_URL}/films/${req.params.slug}/${req.data.episodeNumber}`
       });
       pushSubscriptions.forEach(pushSubscription =>
