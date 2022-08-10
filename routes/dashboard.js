@@ -225,9 +225,9 @@ router.get("/general-report", async (req, res, next) => {
           filmId: {
             $toObjectId: {
               $substr: ["$room", 0, 24],
-            }
-          }
-        }
+            },
+          },
+        },
       },
       {
         $group: {
@@ -247,18 +247,18 @@ router.get("/general-report", async (req, res, next) => {
           localField: "_id",
           foreignField: "_id",
           as: "film",
-        }
+        },
       },
       {
         $replaceRoot: {
           newRoot: {
-            $mergeObjects: [{ $arrayElemAt: ["$film", 0] }, "$$ROOT"]
-          }
-        }
+            $mergeObjects: [{ $arrayElemAt: ["$film", 0] }, "$$ROOT"],
+          },
+        },
       },
       {
-        $unset: ["film", "filmId"]
-      }
+        $unset: ["film", "filmId"],
+      },
     ]);
     generalReport.comment.top5 = top5comment;
     const top5like = await UserReactionFilm.aggregate([
@@ -266,20 +266,20 @@ router.get("/general-report", async (req, res, next) => {
         $match: {
           ...condition,
           reaction: "like",
-        }
+        },
       },
       {
         $set: {
           filmId: {
             $toObjectId: "$filmId",
-          }
-        }
+          },
+        },
       },
       {
         $group: {
           _id: "$filmId",
           likes: { $sum: 1 },
-        }
+        },
       },
       {
         $sort: { likes: -1 },
@@ -293,39 +293,39 @@ router.get("/general-report", async (req, res, next) => {
           localField: "_id",
           foreignField: "_id",
           as: "film",
-        }
+        },
       },
       {
         $replaceRoot: {
           newRoot: {
-            $mergeObjects: [{ $arrayElemAt: ["$film", 0] }, "$$ROOT"]
-          }
-        }
+            $mergeObjects: [{ $arrayElemAt: ["$film", 0] }, "$$ROOT"],
+          },
+        },
       },
       {
-        $unset: ["film", "filmId"]
-      }
-    ])
+        $unset: ["film", "filmId"],
+      },
+    ]);
     generalReport.like.top5 = top5like;
     const top5dislike = await UserReactionFilm.aggregate([
       {
         $match: {
           ...condition,
           reaction: "dislike",
-        }
+        },
       },
       {
         $set: {
           filmId: {
             $toObjectId: "$filmId",
-          }
-        }
+          },
+        },
       },
       {
         $group: {
           _id: "$filmId",
           likes: { $sum: 1 },
-        }
+        },
       },
       {
         $sort: { likes: -1 },
@@ -339,19 +339,19 @@ router.get("/general-report", async (req, res, next) => {
           localField: "_id",
           foreignField: "_id",
           as: "film",
-        }
+        },
       },
       {
         $replaceRoot: {
           newRoot: {
-            $mergeObjects: [{ $arrayElemAt: ["$film", 0] }, "$$ROOT"]
-          }
-        }
+            $mergeObjects: [{ $arrayElemAt: ["$film", 0] }, "$$ROOT"],
+          },
+        },
       },
       {
-        $unset: ["film", "filmId"]
-      }
-    ])
+        $unset: ["film", "filmId"],
+      },
+    ]);
     generalReport.dislike.top5 = top5dislike;
     res.json(generalReport);
   } catch (err) {
@@ -359,11 +359,202 @@ router.get("/general-report", async (req, res, next) => {
   }
 });
 
-
 // Get graph data
 router.get("/monthly-data", async (req, res, next) => {
+  const year = new Date().getFullYear();
+  const month = new Date().getMonth();
+  console.log(year, month);
+
   const data = {};
+  const condition = {};
+
+  condition.createdAt = {
+    $gte: new Date(year - 1, month, 1),
+    $lte: new Date(year, month, 31),
+  };
+  const viewData = await View.aggregate([
+    {
+      $match: condition,
+    },
+    {
+      $group: {
+        _id: {
+          year: {
+            $year: "$createdAt",
+          },
+          month: {
+            $month: "$createdAt",
+          },
+        },
+        amount: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $addFields: {
+        Date: {
+          $concat: [
+            {
+              $toString: "$_id.year",
+            },
+            "-",
+            {
+              $toString: {
+                $add: ["$_id.month", 1],
+              },
+            },
+          ],
+        },
+      },
+    },
+    {
+      $unset: ["_id"],
+    }
+  ]);
+  data.view = {};
+  data.view.type = "view";
+  data.view.content = viewData;
+
+  const commentData = await Comment.aggregate([
+    {
+      $match: condition,
+    },
+    {
+      $group: {
+        _id: {
+          year: {
+            $year: "$createdAt",
+          },
+          month: {
+            $month: "$createdAt",
+          },
+        },
+        amount: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $addFields: {
+        Date: {
+          $concat: [
+            {
+              $toString: "$_id.year",
+            },
+            "-",
+            {
+              $toString: {
+                $add: ["$_id.month", 1],
+              },
+            },
+          ],
+        },
+      },
+    },
+    {
+      $unset: ["_id"],
+    }
+  ])
+  data.comment = {};
+  data.comment.type = "comment";
+  data.comment.content = commentData;
+
+  const likeData = await UserReactionFilm.aggregate([
+    {
+      $match: {
+        ...condition,
+        reaction: "like",
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: {
+            $year: "$createdAt",
+          },
+          month: {
+            $month: "$createdAt",
+          },
+        },
+        amount: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $addFields: {
+        Date: {
+          $concat: [
+            {
+              $toString: "$_id.year",
+            },
+            "-",
+            {
+              $toString: {
+                $add: ["$_id.month", 1],
+              },
+            },
+          ],
+        },
+      },
+    },
+    {
+      $unset: ["_id"],
+    }
+  ])
+  data.like = {};
+  data.like.type = "like";
+  data.like.content = likeData;
+
+  const dislikeData = await UserReactionFilm.aggregate([
+    {
+      $match: {
+        ...condition,
+        reaction: "dislike",
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: {
+            $year: "$createdAt",
+          },
+          month: {
+            $month: "$createdAt",
+          },
+        },
+        amount: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $addFields: {
+        Date: {
+          $concat: [
+            {
+              $toString: "$_id.year",
+            },
+            "-",
+            {
+              $toString: {
+                $add: ["$_id.month", 1],
+              },
+            },
+          ],
+        },
+      },
+    },
+    {
+      $unset: ["_id"],
+    }
+  ])
+  data.dislike = {};
+  data.dislike.type = "dislike";
+  data.dislike.content = dislikeData;
   
+  res.json(data);
 });
 
 module.exports = router;
