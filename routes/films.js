@@ -20,7 +20,7 @@ const {
 } = require('../middlewares');
 
 const router = Router();
-const { DRIVE_APP_ROOT_FOLDER } = process.env;
+const { DRIVE_APP_ROOT_FOLDER, FRONTEND_URL } = process.env;
 
 // Get new films
 router.get('/', getSearchRegExp, async (req, res, next) => {
@@ -357,7 +357,11 @@ router.post(
         userId: { $in: subscriptionUserIds }
       });
       const payload = JSON.stringify({
-        title: `${req.film.title} has updated episode ${req.data.episodeNumber}`
+        title: `${req.film.title} has updated episode ${req.data.episodeNumber}`,
+        body: `Episode ${req.data.episodeNumber}${
+          req.data.title ? ` - ${req.data.title}` : ''
+        } is now available.\nCheck it out!`,
+        url: `${FRONTEND_URL}/films/${req.params.slug}/${req.data.episodeNumber}`
       });
       pushSubscriptions.forEach(pushSubscription =>
         webpush
