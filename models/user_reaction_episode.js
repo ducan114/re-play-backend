@@ -17,6 +17,10 @@ const UserReactionEpisode = new mongoose.Schema({
     type: String,
     enum: ['like', 'dislike'],
     required: true
+  },
+  createdAt: {
+    type: Date,
+    default: new Date()
   }
 });
 
