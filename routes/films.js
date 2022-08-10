@@ -383,11 +383,12 @@ router.post(
 router.get('/:slug/:episodeNumber', async (req, res, next) => {
   const { slug, episodeNumber } = req.params;
   try {
-    const { _id: filmId } = await Film.findOne({ slug });
-    if (!filmId) return res.status(404).json({ message: 'Film not found' });
+    const film = await Film.findOne({ slug });
+    if (!film) return res.status(404).json({ message: 'Film not found' });
+    const filmId = film._id;
     const episode = await Episode.findOne({ filmId, episodeNumber });
     if (episode) return res.json(episode);
-    res.json({ message: 'Episode not found' });
+    res.status(404).json({ message: 'Episode not found' });
   } catch (err) {
     next(err);
   }
