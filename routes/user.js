@@ -4,6 +4,7 @@ const Film = require('../models/film');
 const Episode = require('../models/episode');
 const UserReactionFilm = require('../models/user_reaction_film');
 const UserReactionEpisode = require('../models/user_reaction_episode');
+const UserSubscriptionFilm = require('../models/user_subscription_film');
 const {
   authenticate,
   findFilm,
@@ -250,6 +251,74 @@ router.delete(
         { $inc: { [`${userReaction.reaction}s`]: -1 } }
       );
       res.json({ message: 'Reaction removed' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Create a new film subscription.
+router.post(
+  '/subscriptions/films/:slug',
+  authenticate,
+  findFilm,
+  async (req, res, next) => {
+    try {
+      const userSubscription = await UserSubscriptionFilm.findOne({
+        userId: req.user.id,
+        filmId: req.film.id
+      });
+      if (userSubscription)
+        return res
+          .status(409)
+          .json({ message: 'Subscription already existed' });
+      await UserSubscriptionFilm.create({
+        userId: req.user.id,
+        filmId: req.film.id
+      });
+      res.json({ subscribed: true, message: 'Subscription created' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Get user subscription for a specific film.
+router.get(
+  '/subscriptions/films/:slug',
+  authenticate,
+  findFilm,
+  async (req, res, next) => {
+    try {
+      const userSubscription = await UserSubscriptionFilm.findOne({
+        userId: req.user.id,
+        filmId: req.film.id
+      });
+      if (!userSubscription)
+        return res
+          .status(404)
+          .json({ subscribed: false, message: 'Subscription is not existed' });
+      res.json({ subscribed: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Remove a film subscription.
+router.delete(
+  '/subscriptions/films/:slug',
+  authenticate,
+  findFilm,
+  async (req, res, next) => {
+    try {
+      const userSubscription = await UserSubscriptionFilm.findOneAndDelete({
+        userId: req.user.id,
+        filmId: req.film.id
+      });
+      if (!userSubscription)
+        return res.status(404).json({ message: 'Subscription is not existed' });
+      res.json({ subscribed: false, message: 'Subscription removed' });
     } catch (err) {
       next(err);
     }

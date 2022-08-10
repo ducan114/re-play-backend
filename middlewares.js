@@ -138,6 +138,7 @@ async function findFilm(req, res, next) {
     if (!film) return res.status(404).json({ message: 'Film not found' });
     req.film = {
       id: film._id,
+      title: film.title,
       rootFolder: film.rootFolder
     };
     next();

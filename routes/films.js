@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const crypto = require('crypto');
+const webpush = require('web-push');
 const Film = require('../models/film');
 const FilmReaction = require('../models/user_reaction_film');
 const Episode = require('../models/episode');
@@ -7,6 +8,8 @@ const EpisodeReaction = require('../models/user_reaction_episode');
 const Genre = require('../models/genre');
 const Comment = require('../models/comment');
 const View = require('../models/view');
+const UserSubscriptionFilm = require('../models/user_subscription_film');
+const PushSubscription = require('../models/push_subscription');
 const {
   authenticate,
   authorize,
@@ -345,6 +348,22 @@ router.post(
         ...req.data,
         filmId: req.film.id
       });
+      const subscriptionUserIds = (
+        await UserSubscriptionFilm.find({
+          filmId: req.film.id
+        })
+      ).map(subscription => subscription.userId);
+      const pushSubscriptions = await PushSubscription.find({
+        userId: { $in: subscriptionUserIds }
+      });
+      const payload = JSON.stringify({
+        title: `${req.film.title} has updated episode ${req.data.episodeNumber}`
+      });
+      pushSubscriptions.forEach(pushSubscription =>
+        webpush
+          .sendNotification(JSON.parse(pushSubscription.subscription, payload))
+          .then(console.log)
+      );
       res.json({
         message: 'Episode created'
       });

@@ -10,6 +10,7 @@ const filmRouter = require('./routes/films');
 const videoRouter = require('./routes/videos');
 const userRouter = require('./routes/user');
 const genreRouter = require('./routes/genres');
+const notificationRouter = require('./routes/pushSubscriptions');
 const {
   setDrive,
   logErrors,
@@ -53,6 +54,7 @@ function startServer(auth) {
   app.use(cookieParser());
   app.use('/', authRouter);
   app.use('/user', userRouter);
+  app.use('/notifications', notificationRouter);
   app.use('/films', setDrive(driveInstance), filmRouter);
   app.use('/genres', genreRouter);
   app.use('/videos', setDrive(driveInstance), videoRouter);
