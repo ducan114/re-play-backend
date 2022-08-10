@@ -11,6 +11,7 @@ const videoRouter = require('./routes/videos');
 const userRouter = require('./routes/user');
 const genreRouter = require('./routes/genres');
 const notificationRouter = require('./routes/pushSubscriptions');
+const dashboardRouter = require('./routes/dashboard');
 const {
   setDrive,
   logErrors,
@@ -58,6 +59,7 @@ function startServer(auth) {
   app.use('/films', setDrive(driveInstance), filmRouter);
   app.use('/genres', genreRouter);
   app.use('/videos', setDrive(driveInstance), videoRouter);
+  app.use('/dashboard', dashboardRouter);
   app.use(logErrors);
   app.use(clientErrorHandler);
 

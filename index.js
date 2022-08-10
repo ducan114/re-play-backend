@@ -1,5 +1,4 @@
 if (process.env.NODE_ENV !== 'production') require('dotenv').config();
-
 const { startServer } = require('./server');
 const { OAuth2Client } = require('google-auth-library');
 
