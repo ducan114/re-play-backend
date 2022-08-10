@@ -91,19 +91,7 @@ router.get("/general-report", async (req, res, next) => {
       ...conditionVolatility,
       reaction: "dislike",
     });
-    // const top5View = await Film.aggregate([
-    //   {
-    //     $lookup: {
-    //       from: "views",
-    //       localField: "id",
-    //       foreignField: "filmId",
-    //       as: "views",
-    //     },
-    //     $group: {
 
-    //     }
-    //   }
-    // ])
     const generalReport = {};
     generalReport.view = {};
     generalReport.view.amount = totalViews;
@@ -215,7 +203,15 @@ router.get("/general-report", async (req, res, next) => {
         $unset: ["film", "filmId"],
       },
     ]);
-    generalReport.view.top5 = top5view;
+    generalReport.view.top5 = top5view.map((film) => {
+      return {
+        name: film.title,
+        url: process.env.FRONTEND_URL + "films/" + film.slug,
+        posterUrl: film.poster,
+        amount: film.views,
+        publishedAt: film.releasedDate,
+      };
+    });
     const top5comment = await Comment.aggregate([
       {
         $match: condition,
@@ -260,7 +256,15 @@ router.get("/general-report", async (req, res, next) => {
         $unset: ["film", "filmId"],
       },
     ]);
-    generalReport.comment.top5 = top5comment;
+    generalReport.comment.top5 = top5comment.map((film) => {
+      return {
+        name: film.title,
+        url: process.env.FRONTEND_URL + "films/" + film.slug,
+        posterUrl: film.poster,
+        amount: film.comments,
+        publishedAt: film.releasedDate,
+      };
+    });
     const top5like = await UserReactionFilm.aggregate([
       {
         $match: {
@@ -306,7 +310,15 @@ router.get("/general-report", async (req, res, next) => {
         $unset: ["film", "filmId"],
       },
     ]);
-    generalReport.like.top5 = top5like;
+    generalReport.like.top5 = top5like.map((film) => {
+      return {
+        name: film.title,
+        url: process.env.FRONTEND_URL + "films/" + film.slug,
+        posterUrl: film.poster,
+        amount: film.likes,
+        publishedAt: film.releasedDate,
+      };
+    });
     const top5dislike = await UserReactionFilm.aggregate([
       {
         $match: {
@@ -352,7 +364,15 @@ router.get("/general-report", async (req, res, next) => {
         $unset: ["film", "filmId"],
       },
     ]);
-    generalReport.dislike.top5 = top5dislike;
+    generalReport.dislike.top5 = top5dislike.map((film) => {
+      return {
+        name: film.title,
+        url: process.env.FRONTEND_URL + "films/" + film.slug,
+        posterUrl: film.poster,
+        amount: film.dislikes,
+        publishedAt: film.releasedDate,
+      };
+    });
     res.json(generalReport);
   } catch (err) {
     next(err);
@@ -553,7 +573,7 @@ router.get("/monthly-data", async (req, res, next) => {
   data.dislike = {};
   data.dislike.type = "dislike";
   data.dislike.content = dislikeData;
-  
+
   res.json(data);
 });
 
